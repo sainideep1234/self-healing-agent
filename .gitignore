@@ -8,6 +8,8 @@ venv/
 ENV/
 env/
 .venv/
+venv/
+bin/
 
 # Environment
 .env
