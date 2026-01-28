@@ -208,16 +208,14 @@ async def break_api():
     This will cause validation errors that the agent must heal.
     """
     try:
-        # Clear cached mappings first
-        await redis_client.clear_all_mappings()
+        # Clear cached mappings first (ignore errors if Redis unavailable)
+        try:
+            await redis_client.clear_all_mappings()
+        except Exception as e:
+            logger.warning("redis_clear_failed", error=str(e))
         
-        if _is_embedded_mock():
-            # Use embedded mock
-            set_embedded_mode("drifted")
-        else:
-            # Use external mock API
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                r = await client.post(f"{settings.legacy_api_url}/mode?mode=drifted")
+        # Always use embedded mock (simplest for production)
+        set_embedded_mode("drifted")
             
         await agent_stream.emit(
             ThoughtType.ALERT,
@@ -239,6 +237,7 @@ async def break_api():
             ]
         }
     except Exception as e:
+        logger.error("break_api_error", error=str(e))
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
@@ -253,16 +252,14 @@ async def break_api():
 async def fix_api():
     """Switch mock API back to stable mode."""
     try:
-        # Clear cached mappings
-        await redis_client.clear_all_mappings()
+        # Clear cached mappings (ignore errors if Redis unavailable)
+        try:
+            await redis_client.clear_all_mappings()
+        except Exception as e:
+            logger.warning("redis_clear_failed", error=str(e))
         
-        if _is_embedded_mock():
-            # Use embedded mock
-            set_embedded_mode("stable")
-        else:
-            # Use external mock API
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                r = await client.post(f"{settings.legacy_api_url}/mode?mode=stable")
+        # Always use embedded mock
+        set_embedded_mode("stable")
         
         await agent_stream.emit(
             ThoughtType.SUCCESS,
@@ -274,6 +271,7 @@ async def fix_api():
             "mode": "stable"
         }
     except Exception as e:
+        logger.error("fix_api_error", error=str(e))
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
@@ -288,14 +286,13 @@ async def fix_api():
 async def chaotic_mode():
     """Enable chaotic mode for unpredictable fun."""
     try:
-        await redis_client.clear_all_mappings()
+        try:
+            await redis_client.clear_all_mappings()
+        except Exception as e:
+            logger.warning("redis_clear_failed", error=str(e))
         
-        if _is_embedded_mock():
-            # Use embedded mock
-            set_embedded_mode("chaotic")
-        else:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                r = await client.post(f"{settings.legacy_api_url}/mode?mode=chaotic")
+        # Always use embedded mock
+        set_embedded_mode("chaotic")
         
         await agent_stream.emit(
             ThoughtType.ALERT,
