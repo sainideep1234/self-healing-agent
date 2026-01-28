@@ -53,6 +53,10 @@ const thoughtStyles: Record<string, { icon: string; color: string; bg: string }>
   info: { icon: 'ℹ️', color: 'text-slate-400', bg: 'bg-slate-500/10 border-slate-500/30' },
 };
 
+// API Configuration - uses environment variables for production
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const MOCK_API_URL = process.env.NEXT_PUBLIC_MOCK_API_URL || 'http://localhost:8001';
+
 export default function ChaosPlayground() {
   // State
   const [thoughts, setThoughts] = useState<AgentThought[]>([]);
@@ -77,7 +81,7 @@ export default function ChaosPlayground() {
   // SSE Connection
   useEffect(() => {
     const connectSSE = () => {
-      const eventSource = new EventSource('http://localhost:8000/chaos/stream');
+      const eventSource = new EventSource(`${API_URL}/chaos/stream`);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
@@ -120,7 +124,7 @@ export default function ChaosPlayground() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:8000/chaos/stats');
+        const res = await fetch(`${API_URL}/chaos/stats`);
         const data = await res.json();
         setStats(data.stream);
       } catch (e) {
@@ -137,7 +141,7 @@ export default function ChaosPlayground() {
   useEffect(() => {
     const fetchMode = async () => {
       try {
-        const res = await fetch('http://localhost:8000/chaos/mock-mode');
+        const res = await fetch(`${API_URL}/chaos/mock-mode`);
         const data = await res.json();
         setMockMode(data.mode || 'stable');
       } catch (e) {
@@ -151,7 +155,7 @@ export default function ChaosPlayground() {
   const breakAPI = async () => {
     setIsBreaking(true);
     try {
-      const res = await fetch('http://localhost:8000/chaos/break', { method: 'POST' });
+      const res = await fetch(`${API_URL}/chaos/break`, { method: 'POST' });
       const data = await res.json();
       setMockMode('drifted');
       
@@ -166,7 +170,7 @@ export default function ChaosPlayground() {
   // Fix the API
   const fixAPI = async () => {
     try {
-      await fetch('http://localhost:8000/chaos/fix', { method: 'POST' });
+      await fetch(`${API_URL}/chaos/fix`, { method: 'POST' });
       setMockMode('stable');
       setOriginalData(null);
       setTransformedData(null);
@@ -180,12 +184,12 @@ export default function ChaosPlayground() {
   const triggerRequest = async () => {
     try {
       // First get the raw upstream response
-      const rawRes = await fetch('http://localhost:8001/api/users/1');
+      const rawRes = await fetch(`${MOCK_API_URL}/api/users/1`);
       const rawData = await rawRes.json();
       setOriginalData(rawData);
 
       // Then make request through proxy
-      const proxyRes = await fetch('http://localhost:8000/api/users/1');
+      const proxyRes = await fetch(`${API_URL}/api/users/1`);
       const proxyData = await proxyRes.json();
       
       const healed = proxyRes.headers.get('X-Schema-Healed') === 'true';
@@ -211,7 +215,7 @@ export default function ChaosPlayground() {
   const toggleHumanInLoop = async () => {
     const newState = !humanInLoop;
     try {
-      await fetch('http://localhost:8000/chaos/human-in-loop', {
+      await fetch(`${API_URL}/chaos/human-in-loop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: newState, threshold: 0.7 })
@@ -225,7 +229,7 @@ export default function ChaosPlayground() {
   // Approve/Reject healing
   const handleApproval = async (approved: boolean) => {
     try {
-      await fetch('http://localhost:8000/chaos/approve', {
+      await fetch(`${API_URL}/chaos/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approved })
@@ -239,7 +243,7 @@ export default function ChaosPlayground() {
   // Clear stream
   const clearStream = async () => {
     try {
-      await fetch('http://localhost:8000/chaos/clear', { method: 'DELETE' });
+      await fetch(`${API_URL}/chaos/clear`, { method: 'DELETE' });
       setThoughts([]);
     } catch (e) {
       console.error('Clear error:', e);

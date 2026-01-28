@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     max_healing_attempts: int = Field(default=3)
     healing_confidence_threshold: float = Field(default=0.8)
     
+    # CORS Configuration (comma-separated list of origins)
+    cors_origins: str = Field(default="*")
+    
+    # Frontend URL (for embedded playground)
+    frontend_url: str = Field(default="http://localhost:3000")
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
