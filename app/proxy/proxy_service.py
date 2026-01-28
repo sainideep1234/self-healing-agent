@@ -71,13 +71,27 @@ class ProxyService:
         """
         start_time = time.time()
         normalized_path = path if path.startswith("/") else f"/{path}"
-        upstream_url = f"{self.settings.legacy_api_url}{normalized_path}"
+        
+        # Check if we're using embedded mock API
+        legacy_url = self.settings.legacy_api_url.lower()
+        use_embedded_mock = (
+            "/mock" in legacy_url or
+            "self-healing" in legacy_url or  # Points to itself on Render
+            legacy_url.endswith(":8000")  # Same port as gateway
+        )
+        
+        if use_embedded_mock:
+            # Route to embedded mock API
+            upstream_url = f"http://localhost:{self.settings.port}/mock{normalized_path}"
+        else:
+            upstream_url = f"{self.settings.legacy_api_url}{normalized_path}"
         
         logger.info(
             "proxy_request_start",
             method=method,
             path=normalized_path,
-            upstream_url=upstream_url
+            upstream_url=upstream_url,
+            embedded_mock=use_embedded_mock
         )
         
         client = await self.get_client()

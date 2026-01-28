@@ -55,7 +55,8 @@ const thoughtStyles: Record<string, { icon: string; color: string; bg: string }>
 
 // API Configuration - uses environment variables for production
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const MOCK_API_URL = process.env.NEXT_PUBLIC_MOCK_API_URL || 'http://localhost:8001';
+// Mock API is now embedded in the gateway at /mock path
+const MOCK_API_URL = process.env.NEXT_PUBLIC_MOCK_API_URL || `${API_URL}`;
 
 export default function ChaosPlayground() {
   // State
@@ -183,8 +184,8 @@ export default function ChaosPlayground() {
   // Trigger a test request
   const triggerRequest = async () => {
     try {
-      // First get the raw upstream response
-      const rawRes = await fetch(`${MOCK_API_URL}/api/users/1`);
+      // First get the raw upstream response from embedded mock API
+      const rawRes = await fetch(`${MOCK_API_URL}/mock/api/users/1`);
       const rawData = await rawRes.json();
       setOriginalData(rawData);
 

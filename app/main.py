@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.logging_config import setup_logging, get_logger
 from app.database import redis_client, mongodb_client
 from app.proxy import proxy_service
-from app.routes import proxy_router, admin_router, dashboard_router, chaos_router, playground_router
+from app.routes import proxy_router, admin_router, dashboard_router, chaos_router, playground_router, mock_router
 
 # Initialize settings and logging
 settings = get_settings()
@@ -108,6 +108,7 @@ app.include_router(admin_router)
 app.include_router(dashboard_router)
 app.include_router(chaos_router)
 app.include_router(playground_router)
+app.include_router(mock_router)  # Embedded mock API for standalone deployment
 
 
 @app.get("/", tags=["Root"])
@@ -117,10 +118,14 @@ async def root():
         "name": "Self-Healing API Gateway",
         "version": "1.0.0",
         "status": "running",
-        "playground": "/playground",
-        "dashboard": "/dashboard",
-        "docs": "/docs",
-        "admin": "/admin/health",
-        "chaos_api": "/chaos"
+        "endpoints": {
+            "playground": "/playground",
+            "dashboard": "/dashboard",
+            "docs": "/docs",
+            "admin": "/admin/health",
+            "chaos_api": "/chaos",
+            "mock_api": "/mock (embedded legacy API simulator)"
+        },
+        "note": "Set LEGACY_API_URL to /mock for standalone mode"
     }
 

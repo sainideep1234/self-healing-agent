@@ -161,6 +161,20 @@ async def get_human_in_loop_status():
 # Chaos Controls
 # ============================================================================
 
+# Import embedded mock API functions
+from app.routes.mock_routes import set_mode as set_embedded_mode, get_mode as get_embedded_mode
+
+
+def _is_embedded_mock() -> bool:
+    """Check if we're using the embedded mock API."""
+    legacy_url = settings.legacy_api_url.lower()
+    return (
+        "/mock" in legacy_url or
+        legacy_url.endswith(":8000") or  # Same as gateway
+        "self-healing" in legacy_url  # Points to itself on Render
+    )
+
+
 @router.get(
     "/mock-mode",
     summary="Get mock API mode",
@@ -168,12 +182,17 @@ async def get_human_in_loop_status():
 )
 async def get_mock_mode():
     """Get current mock API mode."""
+    if _is_embedded_mock():
+        # Use embedded mock
+        return {"mode": get_embedded_mode()}
+    
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(f"{settings.legacy_api_url}/mode")
             return r.json()
     except Exception as e:
-        return {"error": str(e)}
+        # Fallback to embedded
+        return {"mode": get_embedded_mode(), "fallback": True}
 
 
 @router.post(
@@ -192,9 +211,13 @@ async def break_api():
         # Clear cached mappings first
         await redis_client.clear_all_mappings()
         
-        # Switch to drifted mode
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.post(f"{settings.legacy_api_url}/mode?mode=drifted")
+        if _is_embedded_mock():
+            # Use embedded mock
+            set_embedded_mode("drifted")
+        else:
+            # Use external mock API
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.post(f"{settings.legacy_api_url}/mode?mode=drifted")
             
         await agent_stream.emit(
             ThoughtType.ALERT,
@@ -233,9 +256,13 @@ async def fix_api():
         # Clear cached mappings
         await redis_client.clear_all_mappings()
         
-        # Switch to stable mode
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.post(f"{settings.legacy_api_url}/mode?mode=stable")
+        if _is_embedded_mock():
+            # Use embedded mock
+            set_embedded_mode("stable")
+        else:
+            # Use external mock API
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.post(f"{settings.legacy_api_url}/mode?mode=stable")
         
         await agent_stream.emit(
             ThoughtType.SUCCESS,
@@ -263,8 +290,12 @@ async def chaotic_mode():
     try:
         await redis_client.clear_all_mappings()
         
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.post(f"{settings.legacy_api_url}/mode?mode=chaotic")
+        if _is_embedded_mock():
+            # Use embedded mock
+            set_embedded_mode("chaotic")
+        else:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.post(f"{settings.legacy_api_url}/mode?mode=chaotic")
         
         await agent_stream.emit(
             ThoughtType.ALERT,
